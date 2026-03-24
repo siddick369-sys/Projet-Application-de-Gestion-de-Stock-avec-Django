@@ -170,6 +170,10 @@ def passer_commande(request):
             commande.statut = 'en_attente'
             commande.save()
 
+            # Notification WhatsApp + Email aux admins via Celery
+            from .tasks import notifier_nouvelle_decharge
+            notifier_nouvelle_decharge.delay(commande.id)
+
             messages.success(request, f"✅ Demande de décharge pour {commande.quantite} x {commande.produit.nom} enregistrée. En attente de validation.")
             return redirect('liste_commandes')
     else:

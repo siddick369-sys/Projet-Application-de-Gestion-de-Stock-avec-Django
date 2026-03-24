@@ -188,4 +188,22 @@ GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 
 # Config HUB
 HUB_EMAIL = 'sasukenozel@gmail.com'  # TODO: Remplacer par l'email réel
-HUB_WHATSAPP_NUMBER = '237678317658'  # TODO: Remplacer par le numéro réel (format international)
+HUB_WHATSAPP_NUMBER = '237678317658'  # Numéro WhatsApp (format international Cameroun)
+
+# =============================================
+# Configuration WhatsApp Bot
+# =============================================
+# Fournisseur: 'green_api' (recommandé) ou 'callmebot'
+WHATSAPP_PROVIDER = os.environ.get('WHATSAPP_PROVIDER', 'green_api')
+
+# --- Green API (green-api.com) ---
+# 1. Créer un compte sur https://green-api.com
+# 2. Créer une instance et scanner le QR code avec WhatsApp
+# 3. Copier l'idInstance et l'apiTokenInstance
+GREEN_API_ID_INSTANCE = os.environ.get('GREEN_API_ID_INSTANCE', '')
+GREEN_API_TOKEN = os.environ.get('GREEN_API_TOKEN', '')
+
+# --- CallMeBot (callmebot.com) - Alternative ---
+# 1. Envoyer "I allow callmebot to send me messages" au +34 644 59 71 67
+# 2. Récupérer la clé API reçue par message
+CALLMEBOT_API_KEY = os.environ.get('CALLMEBOT_API_KEY', '')
