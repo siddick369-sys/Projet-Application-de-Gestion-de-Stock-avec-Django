@@ -24,44 +24,25 @@ L’objectif principal est de démontrer la maîtrise des outils de gestion de d
 
 ## ⚙️ Fonctionnalités principales
 
-- ✅ Gestion des utilisateurs (login, inscription, déconnexion, accès restreint)
-- ✅ Gestion des produits (ajout, modification, suppression, image)
-- ✅ Gestion des commandes
-- ✅ Filtrage et recherche dynamique des produits
-- ✅ Pagination
-- ✅ Alerte de stock automatique (stock ≤ 5) persistée via notifications
-- ✅ Tableau de bord Administrateur** : statistiques, produits, alertes, graphiques dynamiques
-- ✅ Interface responsive (mobile / desktop) : plus Desktop actuellment
-- ✅ Exportation des données  en CSV et pdf.
-- ✅ Statistiques : nombre de produits, utilisateurs, alertes, commandes.
+- ✅ Gestion des utilisateurs (inscription, **vérification par email**, connexion, accès restreint)
+- ✅ Gestion des produits (Référence, Unité, Catégorie, Image, **Type d'entrée**)
+- ✅ Gestion des décharges et commandes
+- ✅ **Alerte HUB** : Notification immédiate (Email + WhatsApp) pour les produits défectueux
+- ✅ **Notifications en temps réel** : Alerte automatique si stock ≤ 5 (Email + WhatsApp) via Celery
+- ✅ **Rapport journalier** : Résumé automatique envoyé chaque matin à 8h00
+- ✅ Filtrage et recherche avancée (par Référence, Type, Unité)
+- ✅ Dashboard Administrateur complet avec graphiques **Chart.js**
+- ✅ Exportation des données en CSV et PDF
+- ✅ Historique des actions utilisateur (Ajout, Modification, Suppression)
 
 ---
 
-## 🛠 Technologies utilisées
-
-- **Backend** : Python 3.12, Django 5.1.7
+- **Backend** : Python 3.11/3.12, Django 5.1.7
+- **Tâches de fond** : Celery, Redis (Broker)
 - **Frontend** : HTML5, CSS3, Bootstrap 5, Chart.js
-- **Base de données** : SQLite (fournie pour les tests)
-- **Outils supplémentaires** : Paginator, JSON, Django ORM, messages
-
----
-
-## 📊 Données visualisées
-
-Le **graphique du stock** est généré avec **Chart.js** et affiche :
-
-- 📦 Le stock de chaque produit
-- 🔴 En rouge : produits avec un stock ≤ 5
-- 🔵 En bleu : les autres produits
-
----
-
-## 🧱 Technologies utilisées
-
-- **Backend** : Python 3.12, Django 5.1.7
-- **Frontend** : HTML5, CSS3, Bootstrap 5, Chart.js
-- **Base de données** : SQLite (intégrée au projet pour les tests)
-- **Autres** : Django ORM, messages, JSON, Paginator, xhtml2pdf
+- **Base de données** : SQLite
+- **Notifications** : Brevo (SMTP/Email), API WhatsApp ready
+- **Outils** : Django ORM, Widget Tweaks, xhtml2pdf, Paginator
 
 ---
 
@@ -79,17 +60,31 @@ Le **graphique du stock** est généré avec **Chart.js** et affiche :
     env\Scripts\activate  # Sous Windows
 
 
-3. **Installer les dépendances **:
-
+3. **Installer les dépendances** :
     ```bash
     pip install -r requirements.txt
+    ```
 
-4. **Lancer le serveur local** :
+4. **Lancer Redis** (nécessaire pour Celery) :
+    - Sur Windows : Utilisez WSL ou téléchargez le `.msi` de Redis.
+    - `redis-server`
 
+5. **Lancer le Worker Celery** (dans un nouveau terminal) :
+    ```bash
+    celery -A Projet worker -l info --pool=solo
+    ```
+
+6. **Lancer Celery Beat** (pour le rapport journalier de 8h - optionnel en test) :
+    ```bash
+    celery -A Projet beat -l info
+    ```
+
+7. **Lancer le serveur Django** :
     ```bash
     python manage.py runserver
-5. **Accéder à l'application **:
+    ```
 
+8. **Accéder à l'application** :
     http://127.0.0.1:8000/
 
 💾 ** Base de données **
