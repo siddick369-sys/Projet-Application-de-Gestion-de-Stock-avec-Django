@@ -1,0 +1,77 @@
+{% extends 'base/index.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-5">
+                    <h2 class="text-center fw-bold mb-4">Vérification du compte</h2>
+                    <p class="text-center text-muted mb-4">
+                        Un code de vérification à 6 chiffres a été envoyé à l'adresse email de <strong>{{ utilisateur.username }}</strong>.
+                    </p>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-4 text-center">
+                            <label for="code" class="form-label fw-semibold">Entrez le code reçu :</label>
+                            <input type="text" name="code" id="code" class="form-control form-control-lg text-center fw-bold letter-spacing-5" maxlength="6" required placeholder="000000">
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold rounded-pill">Vérifier mon compte</button>
+                        </div>
+                    </form>
+
+                    <hr>
+
+                    <div class="text-center">
+                        <p id="cooldown-area" class="mb-0">
+                            Pas reçu de code ? <span id="countdown-timer" class="fw-bold text-danger">Calcul du temps...</span>
+                            <a href="{% url 'renvoyer_code' %}" id="resend-link" class="fw-bold text-decoration-none d-none">Renvoyer le code</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .letter-spacing-5 {
+        letter-spacing: 10px;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Logique du compte à rebours de 2 minutes
+        const codeGeneratedAtStr = "{{ utilisateur.code_generated_at|date:'c' }}";
+        const codeGeneratedAt = new Date(codeGeneratedAtStr);
+        const countdownTimer = document.getElementById('countdown-timer');
+        const resendLink = document.getElementById('resend-link');
+
+        function updateTimer() {
+            const now = new Date();
+            const diff = Math.floor((now - codeGeneratedAt) / 1000);
+            const remaining = 120 - diff;
+
+            if (remaining > 0) {
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                countdownTimer.textContent = `Attendez ${minutes}:${seconds < 10 ? '0' : ''}${seconds} pour renvoyer`;
+                resendLink.classList.add('d-none');
+                countdownTimer.classList.remove('d-none');
+            } else {
+                countdownTimer.classList.add('d-none');
+                resendLink.classList.remove('d-none');
+                clearInterval(timerInterval);
+            }
+        }
+
+        updateTimer();
+        const timerInterval = setInterval(updateTimer, 1000);
+    });
+</script>
+{% endblock %}

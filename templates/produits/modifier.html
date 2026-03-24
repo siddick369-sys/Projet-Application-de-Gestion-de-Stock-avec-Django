@@ -1,57 +1,148 @@
 {% for produit in produits %}
-<!-- MODAL MODIFICATION -->
-<div class="modal fade" id="modalModifierProduit{{ produit.id }}" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content shadow rounded">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">📝 Modifier le produit</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="POST" action="{% url 'modifier_produit' produit.id %}" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Nom</label>
-              <input type="text" class="form-control" name="nom" value="{{ produit.nom }}" required>
+<div class="modal fade" id="modalModifierProduit{{ produit.id }}" tabindex="-1" aria-labelledby="modalModifierProduitLabel{{ produit.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <div class="modal-header bg-primary text-white py-3">
+          <h5 class="modal-title fw-bold" id="modalModifierProduitLabel{{ produit.id }}">📝 Modifier le produit : {{ produit.nom }}</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+  
+        <form method="POST" action="{% url 'modifier_produit' produit.id %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="modal-body p-4">
+            <!-- Informations de base -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-uppercase">Nom du produit</label>
+                <input type="text" class="form-control" name="nom" value="{{ produit.nom }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold small text-uppercase">Référence</label>
+                <input type="text" class="form-control" name="reference" value="{{ produit.reference|default:'' }}">
+              </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Catégorie</label>
-              <select class="form-select" name="categorie">
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label fw-bold small text-uppercase">Prix (FCFA)</label>
+                <input type="number" step="0.01" class="form-control" name="prix" value="{{ produit.prix|floatformat:0|cut:',' }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold small text-uppercase">Quantité</label>
+                <input type="number" class="form-control" name="stock" value="{{ produit.stock }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-bold small text-uppercase">Unité</label>
+                <input type="text" class="form-control" name="unite" value="{{ produit.unite|default:'' }}">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold small text-uppercase">Catégorie</label>
+              <select name="categorie" class="form-select" required>
                 {% for cat in categories %}
                   <option value="{{ cat.id }}" {% if cat.id == produit.categorie.id %}selected{% endif %}>{{ cat.nom }}</option>
                 {% endfor %}
               </select>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Prix (FCFA)</label>
-              <input type="number" step="0.01" class="form-control" name="prix" 
-                     value="{{ produit.prix|floatformat:0|cut:',' }}" required>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold small text-uppercase">Description</label>
+              <textarea name="description" class="form-control" rows="3">{{ produit.description }}</textarea>
             </div>
+
+            <hr class="my-4">
             
-            
-            <div class="col-md-6">
-              <label class="form-label">Stock</label>
-              <input type="number" class="form-control" name="stock" value="{{ produit.stock }}" required>
+            <!-- Détails de l'entrée -->
+            <div class="bg-light p-3 rounded-3 border border-dashed mb-4">
+                <h6 class="fw-bold mb-3 d-flex align-items-center text-primary">
+                    <i class='bx bxs-info-circle me-2'></i> Détails du stock
+                </h6>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Type d'ajout d'origine</label>
+                    <select name="type_ajout" class="form-select type-ajout-modifier" data-produit-id="{{ produit.id }}">
+                        <option value="livraison" {% if produit.type_ajout == 'livraison' %}selected{% endif %}>Livraison</option>
+                        <option value="retour_magasin" {% if produit.type_ajout == 'retour_magasin' %}selected{% endif %}>Retour Magasin</option>
+                    </select>
+                </div>
+
+                <!-- Section Livraison -->
+                <div id="section-livraison-{{ produit.id }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Nom du livreur</label>
+                            <input type="text" name="nom_livreur" class="form-control" value="{{ produit.nom_livreur|default:'' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Société de livraison</label>
+                            <input type="text" name="societe_livraison" class="form-control" value="{{ produit.societe_livraison|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Retour Magasin -->
+                <div id="section-retour-{{ produit.id }}" style="display: none;">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Demandeur (Employé)</label>
+                            <select name="demandeur" class="form-select">
+                                <option value="">--- Sélectionner ---</option>
+                                {% for user in users_list %}
+                                    <option value="{{ user.id }}" {% if produit.demandeur and user.id == produit.demandeur.id %}selected{% endif %}>{{ user.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Lieu d'implantation</label>
+                            <input type="text" name="lieu_implantation" class="form-control" list="siteList" value="{{ produit.lieu_implantation|default:'' }}">
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="col-12">
-              <label class="form-label">Description</label>
-              <textarea class="form-control" name="description">{{ produit.description }}</textarea>
-            </div>
-            <div class="col-md-12">
-              <label class="form-label">Image</label>
-              <input type="file" class="form-control" name="image">
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-uppercase">Image (Laisser vide pour conserver)</label>
+              <input type="file" name="image" class="form-control">
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Enregistrer</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        </div>
-      </form>
+  
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-primary px-4 rounded-pill fw-bold">Enregistrer les modifications</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
+
 {% endfor %}
+
+<script>
+  function updateToggleFields(selectElement) {
+      const id = selectElement.dataset.produitId;
+      const sectionLivraison = document.getElementById(`section-livraison-${id}`);
+      const sectionRetour = document.getElementById(`section-retour-${id}`);
+
+      if (sectionLivraison && sectionRetour) {
+          if (selectElement.value === 'livraison') {
+              sectionLivraison.style.display = 'block';
+              sectionRetour.style.display = 'none';
+          } else {
+              sectionLivraison.style.display = 'none';
+              sectionRetour.style.display = 'block';
+          }
+      }
+  }
+  
+  document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.type-ajout-modifier').forEach(select => {
+          select.addEventListener('change', function() {
+              updateToggleFields(this);
+          });
+          // Initial execution
+          updateToggleFields(select);
+      });
+  });
+</script>
 
  

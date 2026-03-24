@@ -1,31 +1,57 @@
 {% extends "base/index.html" %}
-{% block title %}Mes commandes{% endblock %}
+{% block title %}Liste des décharges{% endblock %}
 {% block content %}
 <div class="container mt-5">
     <div class="card shadow p-4">
-        <h2 class="mb-4 text-primary">📦 Mes commandes</h2>
+        <h2 class="mb-4 text-primary">📋 Liste des décharges</h2>
+
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
 
         {% if commandes %}
             <table class="table table-bordered table-striped">
                 <thead class="table-dark">
                     <tr>
                         <th>Date</th>
+                        <th>Site</th>
+                        <th>Utilisateur</th>
                         <th>Produit</th>
                         <th>Quantité</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for cmd in commandes %}
                         <tr>
                             <td>{{ cmd.date_commande|date:"d/m/Y H:i" }}</td>
+                            <td>{{ cmd.nom_du_site|default:"-" }}</td>
+                            <td>{{ cmd.utilisateur.username }}</td>
                             <td>{{ cmd.produit.nom }}</td>
                             <td>{{ cmd.quantite }}</td>
+                            <td>
+                                <span class="badge {% if cmd.statut == 'en_attente' %}bg-warning{% elif cmd.statut == 'acseptee' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ cmd.get_statut_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if request.user.role == 'admin' and cmd.statut == 'en_attente' %}
+                                    <form action="{% url 'valider_decharge' cmd.id %}" method="post" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" name="action" value="accepter" class="btn btn-sm btn-success">Accepter</button>
+                                        <button type="submit" name="action" value="refuser" class="btn btn-sm btn-danger">Refuser</button>
+                                    </form>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
-            <div class="alert alert-info">Aucune commande enregistrée.</div>
+            <div class="alert alert-info">Aucune décharge enregistrée.</div>
         {% endif %}
     </div>
 </div>

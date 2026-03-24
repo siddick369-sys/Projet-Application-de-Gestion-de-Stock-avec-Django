@@ -11,5 +11,6 @@ urlpatterns = [
     path("utilisateurs/<int:utilisateur_id>/changer-role/", changer_role_utilisateur, name="changer_role_utilisateur"),
     path("utilisateurs/<int:utilisateur_id>/supprimer/", supprimer_utilisateur, name="supprimer_utilisateur"),
     path("historique/", historique_actions, name="historique_actions"),
-
+    path("verifier-compte/", verifier_compte, name="verifier_compte"),
+    path("renvoyer-code/", renvoyer_code, name="renvoyer_code"),
 ]

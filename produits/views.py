@@ -1,4 +1,9 @@
 from django.shortcuts import render, redirect , get_object_or_404, HttpResponse
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.conf import settings
+import urllib.parse
 from .forms import ProduitForm, ImageProduitForm, CommandeForm
 from .models import *
 from django.core.paginator import Paginator
@@ -33,7 +38,7 @@ def ajouter_produit(request):
             HistoriqueProduit.objects.create(
                 utilisateur=request.user,
                 produit=produit,
-                action="ajout"
+                action=produit.type_ajout
             )
 
             # Vérifie le stock
@@ -82,11 +87,17 @@ def modifier_produit(request, produit_id):
             )
 
             messages.success(request, "Produit modifié avec succès ✅.")
-            return redirect('dashboard_admin')  
+            return redirect('dashboard_admin')
+        else:
+            errors = ", ".join([f"{k}: {v[0]}" for k, v in form.errors.items()])
+            messages.error(request, f"Erreur de modification : {errors}")
+            return redirect('dashboard_admin')
     else:
         form = ProduitForm(instance=produit)
 
-    return render(request, 'produits/modifier.html', {'form': form, 'produit': produit})
+    # Note: On ne devrait normalement pas arriver ici en GET car le modal est inclus dans le dashboard.
+    # Mais par sécurité, on redirige vers le dashboard si on tente d'accéder directement à l'URL.
+    return redirect('dashboard_admin')
 
 def supprimer_produit(request, produit_id):
     produit = get_object_or_404(Produit, id=produit_id)
@@ -153,23 +164,14 @@ def passer_commande(request):
     if request.method == 'POST':
         form = CommandeForm(request.POST)
         if form.is_valid():
-            produit = form.cleaned_data['produit']
-            quantite = form.cleaned_data['quantite']
+            # Enregistrement de la demande de décharge sans réduction de stock immédiate
+            commande = form.save(commit=False)
+            commande.utilisateur = request.user
+            commande.statut = 'en_attente'
+            commande.save()
 
-            if produit.stock >= quantite:
-                # Mise à jour du stock
-                produit.stock -= quantite
-                produit.save()
-
-                # Enregistrement de la commande
-                commande = form.save(commit=False)
-                commande.utilisateur = request.user
-                commande.save()
-
-                messages.success(request, f"✅ Commande de {quantite} x {produit.nom} enregistrée avec succès.")
-                return redirect('dashboard_admin')
-            else:
-                messages.warning(request, f"❌ Stock insuffisant : il ne reste que {produit.stock} unités de {produit.nom}.")
+            messages.success(request, f"✅ Demande de décharge pour {commande.quantite} x {commande.produit.nom} enregistrée. En attente de validation.")
+            return redirect('liste_commandes')
     else:
         form = CommandeForm()
 
@@ -178,5 +180,88 @@ def passer_commande(request):
 
 @login_required(login_url='connexion') 
 def liste_commandes(request):
-    commandes = Commande.objects.filter(utilisateur=request.user).order_by('-date_commande')
+    if request.user.role == 'admin':
+        # Les administrateurs voient toutes les demandes
+        commandes = Commande.objects.all().order_by('-date_commande')
+    else:
+        # Les autres utilisateurs voient seulement leurs propres demandes
+        commandes = Commande.objects.filter(utilisateur=request.user).order_by('-date_commande')
+    
     return render(request, 'commandes/liste_commande.html', {'commandes': commandes})
+
+
+@login_required(login_url='connexion')
+def valider_decharge(request, decharge_id):
+    if request.user.role != 'admin':
+        messages.error(request, "Accès non autorisé.")
+        return redirect('liste_commandes')
+
+    decharge = get_object_or_404(Commande, id=decharge_id)
+    produit = decharge.produit
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'accepter':
+            if produit.stock >= decharge.quantite:
+                # Réduction du stock
+                produit.stock -= decharge.quantite
+                produit.save()
+
+                # Mise à jour du statut
+                decharge.statut = 'acseptee'
+                decharge.save()
+
+                # Ajout à l’historique
+                HistoriqueProduit.objects.create(
+                    utilisateur=request.user,
+                    produit=produit,
+                    action="modification"
+                )
+
+                messages.success(request, f"✅ Décharge pour {decharge.produit.nom} acceptée et stock mis à jour.")
+            else:
+                # Stock insuffisant : Envoi email via Celery
+                from .tasks import envoyer_email_alerte_stock
+                envoyer_email_alerte_stock.delay(produit.id, decharge.utilisateur.username, decharge.quantite)
+                
+                messages.error(request, f"❌ Stock insuffisant ({produit.stock} disponibles). Une alerte a été envoyée aux administrateurs.")
+        
+        elif action == 'refuser':
+            decharge.statut = 'refusee'
+            decharge.save()
+            messages.info(request, "❌ Demande de décharge refusée.")
+
+    return redirect('liste_commandes')
+
+
+from django.http import JsonResponse
+from .tasks import envoyer_email_alerte_stock, envoyer_alerte_hub_task
+
+
+@login_required(login_url='connexion')
+def alerter_hub(request):
+    if request.method == 'POST':
+        produit_ids = request.POST.getlist('produit_ids')
+        if not produit_ids:
+            return JsonResponse({'success': False, 'error': "Veuillez sélectionner au moins un produit."}, status=400)
+
+        produits = Produit.objects.filter(id__in=produit_ids)
+        date_jour = timezone.now().strftime('%d/%m/%Y')
+        
+        # 1. Trigger Celery Task (Background Email)
+        envoyer_alerte_hub_task.delay(produit_ids, date_jour)
+
+        # 2. Prepare WhatsApp URL (returned for frontend redirection)
+        noms_produits = ", ".join([p.nom for p in produits])
+        wa_message = f"Le {noms_produits} qui a été sélectionné est déclaré défectueux nous l'avons envoyé le {date_jour} au HUB"
+        encoded_message = urllib.parse.quote(wa_message)
+        wa_url = f"https://wa.me/{settings.HUB_WHATSAPP_NUMBER}?text={encoded_message}"
+        
+        return JsonResponse({
+            'success': True,
+            'wa_url': wa_url,
+            'message': "L'email est en cours d'envoi et vous allez être redirigé vers WhatsApp ✅."
+        })
+
+    return redirect('dashboard_admin')

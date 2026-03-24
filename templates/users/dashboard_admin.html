@@ -84,41 +84,50 @@
 
      
     <!-- Barre de recherche -->
-<form method="get" class="mb-3 d-flex flex-wrap gap-2">
-
-  <input type="text" name="q" placeholder="🔎 Rechercher un produit" class="form-control w-50" value="{{ request.GET.q }}">
-
-  <select name="categorie" class="form-select w-25">
-      <option value=""> 📂Toutes catégories</option>
-      {% for c in categories %}
-      <option value="{{ c.id }}" {% if request.GET.categorie == c.id|stringformat:"s" %}selected{% endif %}>
-          {{ c.nom }}
-      </option>
-      {% endfor %}
-  </select>
-
-  <!--  Tri -->
-  <select name="tri" class="form-select w-25">
-      <option value="">↕️ Trier par</option>
-      <option value="nom_asc" {% if request.GET.tri == "nom_asc" %}selected{% endif %}>Nom (A → Z)</option>
-      <option value="nom_desc" {% if request.GET.tri == "nom_desc" %}selected{% endif %}>Nom (Z → A)</option>
-      <option value="prix_asc" {% if request.GET.tri == "prix_asc" %}selected{% endif %}>Prix (Croissant)</option>
-      <option value="prix_desc" {% if request.GET.tri == "prix_desc" %}selected{% endif %}>Prix (Décroissant)</option>
-  </select>
-
-  <!--  Filtre stock -->
-  <select name="stock" class="form-select w-25">
-      <option value="">🧮 Stock (Tous)</option>
-      <option value="rupture" {% if request.GET.stock == "rupture" %}selected{% endif %}>Rupture (0)</option>
-      <option value="faible" {% if request.GET.stock == "faible" %}selected{% endif %}>Faible (< 5)</option>
-  </select>
-
-  <button type="submit" class="btn btn-primary">Appliquer</button>
-
-  <!--  Bouton reset -->
-  <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary">🔄Réinitialiser</a>
-
-</form>
+    <!-- Zone de Filtres -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-3">
+            <form method="GET" action="">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted mb-1">🔍 Recherche</label>
+                        <input type="text" name="q" class="form-control form-control-sm" placeholder="Nom..." value="{{ request.GET.q }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">📦 Référence</label>
+                        <input type="text" name="ref" class="form-control form-control-sm" placeholder="Réf..." value="{{ request.GET.ref }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">📂 Catégorie</label>
+                        <select name="categorie" class="form-select form-select-sm">
+                            <option value="">Toutes</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if request.GET.categorie == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">🔄 Type Ajout</label>
+                        <select name="type_ajout" class="form-select form-select-sm">
+                            <option value="">Tous</option>
+                            <option value="livraison" {% if request.GET.type_ajout == 'livraison' %}selected{% endif %}>Livraison</option>
+                            <option value="retour_magasin" {% if request.GET.type_ajout == 'retour_magasin' %}selected{% endif %}>Retour Magasin</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">📊 Stock</label>
+                        <select name="stock" class="form-select form-select-sm">
+                            <option value="">Tous</option>
+                            <option value="faible" {% if request.GET.stock == 'faible' %}selected{% endif %}>Faible (<= 5)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">Filtrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
       
@@ -129,85 +138,80 @@
             {% if user.is_superuser %}
                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAjoutProduit">➕ Ajouter</button>
             {% endif %}
+            <button class="btn btn-warning mx-1 fw-bold" data-bs-toggle="modal" data-bs-target="#modalAlerteHub">🔔 Alerter le HUB</button>
             <a href="{% url 'export_csv' %}" class="btn btn-outline-dark mx-1">📤 Export CSV</a>
             <a href="{% url 'export_pdf' %}" class="btn btn-outline-dark">📄 Export PDF</a>
         </div>
     </div>
 
     <!-- Table des produits -->
-    <div class="table-responsive shadow">
-        <table class="table table-hover table-bordered text-center align-middle">
-            <thead class="table-dark">
+    <div class="table-responsive shadow-sm rounded-4 border">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
                 <tr>
-                    <th>Image</th>
-                    <th>Nom</th>
+                    <th class="ps-4">Réf</th>
+                    <th>Produit</th>
                     <th>Catégorie</th>
                     <th>Prix</th>
                     <th>Stock</th>
-                    <th>Actions</th>
+                    <th class="text-center">Unité</th>
+                    <th>Type Ajout</th>
+                    <th class="text-end pe-4">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for produit in produits %}
                 <tr>
-                  <td>
-                    {% if produit.images.all %}
-                    <div id="carouselProduit{{ produit.id }}" class="carousel slide" data-bs-ride="false">
-                      <div class="carousel-inner" style="max-width: 150px; margin: auto;"> <!-- Conteneur fixé -->
-                        {% for image in produit.images.all %}
-                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                          <img src="{{ image.image.url }}" class="d-block mx-auto rounded"
-                               style="max-height: 120px; width: auto; max-width: 100%; object-fit: cover;"
-                               alt="Image {{ forloop.counter }}">
+                    <td class="ps-4 small fw-bold text-muted">{{ produit.reference|default:"-" }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            {% if produit.images.all %}
+                                <img src="{{ produit.images.first.image.url }}" class="rounded me-3" width="45" height="45" style="object-fit: cover;">
+                            {% endif %}
+                            <div>
+                                <div class="fw-bold">{{ produit.nom }}</div>
+                                <small class="text-muted d-block text-truncate" style="max-width: 200px;">{{ produit.description }}</small>
+                            </div>
                         </div>
-                        {% endfor %}
-                        {% if produit.images.all|length > 1 %}
-                        <button class="carousel-control-prev" type="button" data-bs-target="#carouselProduit{{ produit.id }}" data-bs-slide="prev">
-                          ⬅️
-                        </button>
-                        <button class="carousel-control-next" type="button" data-bs-target="#carouselProduit{{ produit.id }}" data-bs-slide="next">
-                          ➡️
-                        </button>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">{{ produit.categorie.nom }}</span></td>
+                    <td class="fw-bold">{{ produit.prix }} FCFA</td>
+                    <td>
+                        {% if produit.stock <= 5 %}
+                            <span class="badge bg-danger rounded-pill px-3">Critique: {{ produit.stock }}</span>
+                        {% else %}
+                            <span class="badge bg-success rounded-pill px-3">{{ produit.stock }}</span>
                         {% endif %}
-                      </div>
-                      {% else %}
-                        <span class="text-muted">Aucune image</span>
-                      {% endif %}
-                      </div>
-                     
-                  </td>
-              
-                  <td>{{ produit.nom }}</td>
-                  <td>{{ produit.categorie.nom }}</td>
-                  <td>{{ produit.prix }} FCFA</td>
-                  <td>
-                    {% if produit.stock <= 5 %}
-                        <span class="badge bg-danger">{{ produit.stock }}</span>
-                    {% else %}
-                        <span class="badge bg-success">{{ produit.stock }}</span>
-                    {% endif %}
-                </td>
-                  
-                <td>
-                  <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalModifierProduit{{ produit.id }}">
-                    📝 Modifier
-                  </button>
-                  {% if user.is_superuser %}
-                  <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalSupprimerProduit{{ produit.id }}">
-                    ❌ Supprimer
-                  </button>
-                  {% endif %}
-              </td>
-                
+                    </td>
+                    <td class="text-center small">{{ produit.unite|default:"-" }}</td>
+                    <td>
+                        <span class="badge {% if produit.type_ajout == 'livraison' %}bg-info{% else %}bg-secondary{% endif %} text-capitalize">
+                            {{ produit.get_type_ajout_display }}
+                        </span>
+                        <div class="x-small text-muted mt-1" style="font-size: 0.7rem;">{{ produit.date_ajout|date:"d/m/Y" }}</div>
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="d-flex gap-1 justify-content-end">
+                            <button class="btn btn-sm btn-primary d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalModifierProduit{{ produit.id }}">
+                                <i class='bx bx-edit-alt me-1'></i> Modifier
+                            </button>
+                            <button class="btn btn-sm btn-danger d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalSupprimerProduit{{ produit.id }}">
+                                <i class='bx bx-trash me-1'></i> Supprimer
+                            </button>
+                        </div>
+                    </td>
                 </tr>
                 {% empty %}
-    <div class="alert alert-info text-center w-100 mt-3">
-    📦 Aucun produit à afficher. Essayez de modifier vos filtres ou d’ajouter un nouveau produit.
-</div>
-
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class='bx bx-package fs-1 d-block mb-3'></i>
+                        Aucun produit trouvé.
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
     </div>
     <div class="d-flex justify-content-center mt-3">
       <nav>
@@ -241,8 +245,99 @@
     </div>
   </div>
   
-  
+  <!-- Modal Alerter le HUB -->
+  <div class="modal fade" id="modalAlerteHub" tabindex="-1" aria-labelledby="modalAlerteHubLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form action="{% url 'alerter_hub' %}" method="POST">
+          {% csrf_token %}
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title fw-bold" id="modalAlerteHubLabel">🔔 Notification Produits Défectueux au HUB</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Sélectionnez les produits à déclarer défectueux :</p>
+            <div class="table-responsive" style="max-height: 400px;">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Sélection</th>
+                    <th>Produit</th>
+                    <th>Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for produit in produits_tous %}
+                  <tr>
+                    <td>
+                      <input type="checkbox" name="produit_ids" value="{{ produit.id }}" class="form-check-input">
+                    </td>
+                    <td>{{ produit.nom }}</td>
+                    <td>{{ produit.stock }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-warning fw-bold" id="btnEnvoyerAlerte">
+              <span class="spinner-border spinner-border-sm d-none" id="spinnerAlerte" role="status" aria-hidden="true"></span>
+              🚀 Envoyer Alerte (Email & WhatsApp)
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.querySelector('#modalAlerteHub form');
+      const btn = document.getElementById('btnEnvoyerAlerte');
+      const spinner = document.getElementById('spinnerAlerte');
+
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          // Show spinner
+          btn.disabled = true;
+          spinner.classList.remove('d-none');
+
+          const formData = new FormData(form);
+
+          fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Show success message briefly then redirect
+              alert(data.message);
+              window.location.href = data.wa_url;
+            } else {
+              alert(data.error || "Une erreur est survenue.");
+              btn.disabled = false;
+              spinner.classList.add('d-none');
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert("Une erreur de communication est survenue.");
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+          });
+        });
+      }
+    });
+  </script>
   
   
   

@@ -14,31 +14,102 @@ from django.contrib.auth.decorators import login_required
 
 User = get_user_model()
 
+import random
+from django.utils import timezone
+from .tasks import envoyer_email_verification
+
+
 #  Vue pour l'inscription
 def inscription(request):
     if request.user.is_authenticated:
-        return rediriger_utilisateur(request.user)  # redirige vers dashboard si l'utilisateur est connecté
+        return rediriger_utilisateur(request.user)
     
     if request.method == "POST":
         form = FormulaireInscription(request.POST)
         if form.is_valid():
-            utilisateur = form.save()
-            login(request, utilisateur)  # Connexion automatique après inscription
-            return rediriger_utilisateur(utilisateur)  # Redirection selon le rôle
+            utilisateur = form.save(commit=False)
+            # Génération du code de vérification
+            code = str(random.randint(100000, 999999))
+            utilisateur.verification_code = code
+            utilisateur.is_verified = False
+            utilisateur.code_generated_at = timezone.now()
+            utilisateur.save()
+            
+            # Envoi du code par email via Celery
+            envoyer_email_verification.delay(utilisateur.id, code)
+            
+            # On stocke l'ID utilisateur dans la session pour la vérification
+            request.session['pending_user_id'] = utilisateur.id
+            messages.info(request, "Un code de vérification a été envoyé à votre adresse email.")
+            return redirect("verifier_compte")
     else:
         form = FormulaireInscription()
     
     return render(request, "users/inscription.html", {"form": form}  )
 
+# Vue pour la vérification du compte
+def verifier_compte(request):
+    user_id = request.session.get('pending_user_id')
+    if not user_id:
+        return redirect("inscription")
+    
+    utilisateur = get_object_or_404(Utilisateur, id=user_id)
+    
+    if request.method == "POST":
+        code_saisi = request.POST.get("code")
+        if code_saisi == utilisateur.verification_code:
+            utilisateur.is_verified = True
+            utilisateur.save()
+            login(request, utilisateur)
+            del request.session['pending_user_id']
+            messages.success(request, "Compte vérifié avec succès ! 🎉")
+            return rediriger_utilisateur(utilisateur)
+        else:
+            messages.error(request, "Code de vérification incorrect.")
+            
+    return render(request, "users/verification.html", {"utilisateur": utilisateur})
+
+# Vue pour renvoyer le code
+def renvoyer_code(request):
+    user_id = request.session.get('pending_user_id')
+    if not user_id:
+        return redirect("inscription")
+    
+    utilisateur = get_object_or_404(Utilisateur, id=user_id)
+    
+    # Vérification du cooldown de 2 minutes
+    maintenant = timezone.now()
+    if utilisateur.code_generated_at:
+        difference = (maintenant - utilisateur.code_generated_at).total_seconds()
+        if difference < 120:
+            temps_restant = int(120 - difference)
+            messages.warning(request, f"Veuillez attendre {temps_restant} secondes avant de demander un nouveau code.")
+            return redirect("verifier_compte")
+            
+    # Régénération du code
+    code = str(random.randint(100000, 999999))
+    utilisateur.verification_code = code
+    utilisateur.code_generated_at = timezone.now()
+    utilisateur.save()
+    
+    envoyer_email_verification.delay(utilisateur.id, code)
+    messages.success(request, "Un nouveau code a été envoyé.")
+    return redirect("verifier_compte")
+
 #  Vue pour la connexion
 def connexion(request):
     if request.user.is_authenticated:
-        return rediriger_utilisateur(request.user)  # redirige vers dashboard si l'utilisateur est connecté
+        return rediriger_utilisateur(request.user)
     
     if request.method == "POST":
         form = ConnexionForm(request=request, data=request.POST)
         if form.is_valid():
             utilisateur = form.get_user()
+            if not utilisateur.is_verified:
+                request.session['pending_user_id'] = utilisateur.id
+                messages.warning(request, "Veuillez vérifier votre compte avant de vous connecter.")
+                return redirect("verifier_compte")
+            
             login(request, utilisateur)
             return rediriger_utilisateur(utilisateur)
         else:
@@ -113,15 +184,26 @@ def dashboard_admin(request):
     if stock == "faible":
         produits = produits.filter(stock__lte=5)
 
-    # Autres filtres
+    # Filtres avancés
     query = request.GET.get("q")
     categorie_id = request.GET.get("categorie")
     tri = request.GET.get("tri")
+    ref = request.GET.get("ref")
+    unite_f = request.GET.get("unite")
+    t_ajout = request.GET.get("type_ajout")
 
     if query:
         produits = produits.filter(Q(nom__icontains=query) | Q(description__icontains=query))
+    if ref:
+        produits = produits.filter(reference__icontains=ref)
+    if unite_f:
+        produits = produits.filter(unite__icontains=unite_f)
+    if t_ajout:
+        produits = produits.filter(type_ajout=t_ajout)
     if categorie_id:
         produits = produits.filter(categorie_id=categorie_id)
+    
+    # Tri
     if tri == "nom_asc":
         produits = produits.order_by("nom")
     elif tri == "nom_desc":
@@ -136,8 +218,11 @@ def dashboard_admin(request):
     page = request.GET.get('page')
     produits_page = paginator.get_page(page)
 
-    # Alerte stock
-    alerte_popup = AlerteStock.objects.count() > 0 and stock != "faible"
+    # Récupération des sites existants pour le datalist (lieu_implantation)
+    sites_existants = Commande.objects.values_list('nom_du_site', flat=True).exclude(nom_du_site__isnull=True).exclude(nom_du_site="").distinct()
+
+    # Alerte stock popup
+    alerte_popup = AlerteStock.objects.exists() and stock != "faible"
 
     # Statistiques
     stats = {
@@ -163,9 +248,12 @@ def dashboard_admin(request):
         'form': form,
         'image_form': ImageProduitForm(),
         'alerte_popup': alerte_popup,
+        'produits_tous': Produit.objects.all(),
         'labels': json.dumps(labels),
         'stocks': json.dumps(stocks),
         'colors': json.dumps(colors),
+        'sites_existants': sites_existants,
+        'users_list': Utilisateur.objects.all().order_by('username'),
     }
 
     return render(request, "users/dashboard_admin.html", context)

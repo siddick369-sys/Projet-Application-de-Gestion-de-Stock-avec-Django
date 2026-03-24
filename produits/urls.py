@@ -8,5 +8,7 @@ urlpatterns = [
     path('export/pdf/', export_pdf, name='export_pdf'),
     path('commande/', passer_commande, name='passer_commande'),
     path('commandes/', liste_commandes, name='liste_commandes'),
+    path('valider-decharge/<int:decharge_id>/', valider_decharge, name='valider_decharge'),
+    path('alerter-hub/', alerter_hub, name='alerter_hub'),
 ]
 

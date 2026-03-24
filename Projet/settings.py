@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$c1bgu$8o2bqx6d6z=f%*8f)^lvhr2=ff&s8-$ct!24oblf_&c'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-$c1bgu$8o2bqx6d6z=f%*8f)^lvhr2=ff&s8-$ct!24oblf_&c')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -152,3 +152,40 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Celery Configuration
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'notification-stock-8h': {
+        'task': 'produits.tasks.notification_quotidienne_stock',
+        'schedule': crontab(hour=8, minute=0),
+    },
+}
+
+# Email Configuration (Console for development)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = 'smtp-relay.brevo.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = '9f4b2a001@smtp-brevo.com'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'K7VXJCdE8cx3rDmY')
+DEFAULT_FROM_EMAIL = 'sasukenozel@gmail.com'
+ADMIN_EMAILS = ['siddick369@gmail.com', 'securite@infracontrol.com']
+
+FRONTEND_URL = 'http://localhost:8000'
+
+# Groq API (IA Moderation)
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+
+# Config HUB
+HUB_EMAIL = 'sasukenozel@gmail.com'  # TODO: Remplacer par l'email réel
+HUB_WHATSAPP_NUMBER = '237678317658'  # TODO: Remplacer par le numéro réel (format international)

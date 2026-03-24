@@ -1,57 +1,140 @@
-<div class="modal fade" id="modalAjoutProduit" tabindex="-1">
+{% load widget_tweaks %}
+
+<div class="modal fade" id="modalAjoutProduit" tabindex="-1" aria-labelledby="modalAjoutProduitLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-      <div class="modal-content shadow rounded">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title">➕ Ajouter un produit</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-content shadow-lg border-0 rounded-4">
+        <div class="modal-header bg-primary text-white py-3">
+          <h5 class="modal-title fw-bold" id="modalAjoutProduitLabel">➕ Ajouter un produit au stock</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
   
         <form method="POST" action="{% url 'ajouter_produit' %}" enctype="multipart/form-data">
           {% csrf_token %}
-          <div class="modal-body">
-            <div class="row g-3">
+          <div class="modal-body p-4">
+            <!-- Informations de base -->
+            <div class="row g-3 mb-4">
               <div class="col-md-6">
-                <label for="nom" class="form-label">Nom</label>
-                <input type="text" class="form-control" name="nom" required>
+                <label class="form-label fw-bold small text-uppercase">Nom du produit</label>
+                {{ form.nom|add_class:"form-control" }}
               </div>
-  
               <div class="col-md-6">
-                <label for="categorie" class="form-label">Catégorie</label>
-                <select class="form-select" name="categorie" required>
-                  {% for cat in categories %}
-                    <option value="{{ cat.id }}">{{ cat.nom }}</option>
-                  {% endfor %}
-                </select>
+                <label class="form-label fw-bold small text-uppercase">Référence</label>
+                {{ form.reference|add_class:"form-control" }}
               </div>
-  
-              <div class="col-md-6">
-                <label for="prix" class="form-label">Prix</label>
-                <input type="number" step="0.01" class="form-control" name="prix" required>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label fw-bold small text-uppercase">Prix (FCFA)</label>
+                {{ form.prix|add_class:"form-control" }}
               </div>
-  
-              <div class="col-md-6">
-                <label for="stock" class="form-label">Stock</label>
-                <input type="number" class="form-control" name="stock" required>
+              <div class="col-md-4">
+                <label class="form-label fw-bold small text-uppercase">Quantité</label>
+                {{ form.stock|add_class:"form-control" }}
               </div>
-  
-              <div class="col-12">
-                <label for="description" class="form-label">Description</label>
-                <textarea class="form-control" name="description" rows="3" maxlength="255"></textarea>
+              <div class="col-md-4">
+                <label class="form-label fw-bold small text-uppercase">Unité</label>
+                {{ form.unite|add_class:"form-control" }}
               </div>
-  
-              <div class="col-md-12">
-                <label for="image" class="form-label">Image</label>
-                <input type="file" class="form-control" name="image" required>
-              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold small text-uppercase">Catégorie</label>
+              {{ form.categorie|add_class:"form-select" }}
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold small text-uppercase">Description</label>
+              {{ form.description|add_class:"form-control" }}
+            </div>
+
+            <hr class="my-4">
+            
+            <!-- Détails de l'entrée -->
+            <div class="bg-light p-3 rounded-3 border border-dashed mb-4">
+                <h6 class="fw-bold mb-3 d-flex align-items-center">
+                    <i class='bx bxs-info-circle me-2 text-primary'></i> Détails de l'entrée en stock
+                </h6>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-uppercase">Type d'entrée</label>
+                    {{ form.type_ajout|add_class:"form-select" }}
+                </div>
+
+                <!-- Section Livraison (Affichée par défaut) -->
+                <div id="section-livraison">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Nom du livreur</label>
+                            {{ form.nom_livreur|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Société de livraison</label>
+                            {{ form.societe_livraison|add_class:"form-control" }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Retour Magasin (Masquée par défaut) -->
+                <div id="section-retour" style="display: none;">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small">Demandeur (Employé)</label>
+                            {{ form.demandeur|add_class:"form-select" }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Lieu d'implantation</label>
+                            {{ form.lieu_implantation|add_class:"form-control" }}
+                            <datalist id="siteList">
+                                {% for site in sites_existants %}
+                                    <option value="{{ site }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-uppercase">Image du produit</label>
+              <input type="file" name="image" class="form-control" required>
             </div>
           </div>
   
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-primary px-4 rounded-pill fw-bold">Enregistrer le produit</button>
           </div>
         </form>
       </div>
     </div>
   </div>
+
+  <script>
+    function toggleFields() {
+        // Recherche précise du select dans le modal
+        const typeSelect = document.querySelector('#modalAjoutProduit select[name="type_ajout"]');
+        if (!typeSelect) return;
+
+        const val = typeSelect.value;
+        const sectionLivraison = document.getElementById('section-livraison');
+        const sectionRetour = document.getElementById('section-retour');
+
+        if (val === 'livraison') {
+            sectionLivraison.style.display = 'block';
+            sectionRetour.style.display = 'none';
+        } else if (val === 'retour_magasin') {
+            sectionLivraison.style.display = 'none';
+            sectionRetour.style.display = 'block';
+        }
+    }
+
+    // Initialisation au chargement de la page pour le modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.querySelector('#modalAjoutProduit select[name="type_ajout"]');
+        if (typeSelect) {
+            typeSelect.addEventListener('change', toggleFields);
+            toggleFields(); // Appel initial
+        }
+    });
+  </script>
   

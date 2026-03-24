@@ -1,0 +1,56 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        .header { background-color: #454f17; color: white; padding: 20px; text-align: center; }
+        .header img { height: 60px; margin-bottom: 10px; }
+        .content { padding: 30px; }
+        .footer { background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 0.8rem; color: #777; }
+        .product-list { margin-top: 20px; border-collapse: collapse; width: 100%; }
+        .product-list th, .product-list td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .product-list th { background-color: #f8f8f8; }
+        .badge { background-color: #d9534f; color: white; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <!-- Note: In production, use absolute URL for image -->
+            <h2>Stock Management Hub Alert</h2>
+        </div>
+        <div class="content">
+            <p>Bonjour,</p>
+            <p>Nous vous informons que les produits suivants ont été déclarés <strong>DÉFECTUEUX</strong> et ont été envoyés au HUB ce jour, le <strong>{{ date_jour }}</strong>.</p>
+            
+            <table class="product-list">
+                <thead>
+                    <tr>
+                        <th>Nom du Produit</th>
+                        <th>Catégorie</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for produit in produits %}
+                    <tr>
+                        <td>{{ produit.nom }}</td>
+                        <td>{{ produit.categorie.nom }}</td>
+                        <td><span class="badge">Défectueux</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <p style="margin-top: 30px;">Merci de prendre les dispositions nécessaires dès réception.</p>
+            <p>Cordialement,<br>L'équipe Gestion de Stock</p>
+        </div>
+        <div class="footer">
+            &copy; 2025 IFOAD STORE - Système de Gestion Automatisé
+        </div>
+    </div>
+</body>
+</html>

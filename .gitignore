@@ -1,6 +1,7 @@
 # Environnement virtuel
 Evirtuel/
 virtuel/
+env/
 
 # Fichiers de cache Python
 __pycache__/

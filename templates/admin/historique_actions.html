@@ -29,6 +29,10 @@
                                     <td>
                                         {% if entry.action == "ajout" %}
                                             <span class="badge bg-success">Ajout</span>
+                                        {% elif entry.action == "livraison" %}
+                                            <span class="badge bg-info">Livraison</span>
+                                        {% elif entry.action == "retour_magasin" %}
+                                            <span class="badge bg-secondary">Retour Magasin</span>
                                         {% elif entry.action == "modification" %}
                                             <span class="badge bg-warning text-dark">Modification</span>
                                         {% elif entry.action == "suppression" %}

@@ -1,11 +1,11 @@
 {% extends "base/index.html" %}
-{% block title %}Passer une commande{% endblock %}
+{% block title %}Effectuer une décharge{% endblock %}
 {% load static %}
 
 {% block content %}
 <div class="container mt-5">
     <div class="card shadow p-4">
-        <h2 class="mb-4 text-primary">🛒 Passer une commande</h2>
+        <h2 class="mb-4 text-primary">📦 Effectuer une décharge</h2>
         
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -21,7 +21,11 @@
                 <label for="id_quantite">Quantité</label>
                 {{ form.quantite }}
             </div>
-            <button type="submit" class="btn btn-success">✅ Valider la commande</button>
+            <div class="form-group mb-3">
+                <label for="id_nom_du_site">Nom du Site</label>
+                {{ form.nom_du_site }}
+            </div>
+            <button type="submit" class="btn btn-primary">✅ Soumettre la demande de décharge</button>
         </form>
     </div>
 </div>

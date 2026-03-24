@@ -17,6 +17,11 @@ class Utilisateur(AbstractUser):
     adresse = models.TextField(blank=True, null=True)
     date_de_naissance = models.DateField(blank=True, null=True)
     photo_profil = models.ImageField(upload_to="photos_profils/", blank=True, null=True)
+    
+    # Verification email
+    is_verified = models.BooleanField(default=False)
+    verification_code = models.CharField(max_length=6, blank=True, null=True)
+    code_generated_at = models.DateTimeField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
         # Synchronisation role-admin ↔ superuser

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { width: 80%; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
+        .header { background-color: #f8f9fa; padding: 20px; text-align: center; border-bottom: 3px solid #ffc107; }
+        .alert-badge { background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .low-stock { color: #dc3545; font-weight: bold; }
+        .footer { margin-top: 30px; font-size: 0.9em; color: #777; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="color: #333; margin: 0;">Résumé Journalier du Stock</h1>
+            <p style="color: #666;">Rapport du {{ date_jour }}</p>
+        </div>
+        
+        <p>Bonjour,</p>
+        <p>Voici le résumé des produits dont le stock est actuellement considéré comme <strong>critique (≤ 5 unités)</strong>.</p>
+        
+        <p><span class="alert-badge">{{ nb_alertes }} produits</span> nécessitent votre attention.</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Produit</th>
+                    <th>Catégorie</th>
+                    <th>Stock Actuel</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for produit in produits %}
+                <tr>
+                    <td>{{ produit.nom }}</td>
+                    <td>{{ produit.categorie.nom }}</td>
+                    <td class="low-stock">{{ produit.stock }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <p>Veuillez passer commande auprès de vos fournisseurs pour éviter toute rupture de stock prolongée.</p>
+        
+        <div class="footer">
+            <hr>
+            <p>Cet email a été généré automatiquement par le système de gestion de stock IFOAD STORE.</p>
+        </div>
+    </div>
+</body>
+</html>
