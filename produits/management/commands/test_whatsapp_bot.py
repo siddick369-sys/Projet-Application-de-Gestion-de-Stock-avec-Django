@@ -105,6 +105,6 @@ class Command(BaseCommand):
 
     def _print_result(self, success):
         if success:
-            self.stdout.write(self.style.SUCCESS("  ✓ Envoyé avec succès"))
+            self.stdout.write(self.style.SUCCESS("  [OK] Envoyé avec succès"))
         else:
-            self.stdout.write(self.style.ERROR("  ✗ Échec de l'envoi"))
+            self.stdout.write(self.style.ERROR("  [FAIL] Échec de l'envoi"))
