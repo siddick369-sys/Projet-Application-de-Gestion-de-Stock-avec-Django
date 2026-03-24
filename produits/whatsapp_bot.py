@@ -163,7 +163,7 @@ class WhatsAppBot:
             "message": message
         }
 
-        response = requests.post(url, json=payload, timeout=30)
+        response = requests.post(url, json=payload, timeout=60)
 
         if response.status_code == 200:
             data = response.json()
@@ -190,7 +190,7 @@ class WhatsAppBot:
             "apikey": api_key
         }
 
-        response = requests.get(url, params=params, timeout=30)
+        response = requests.get(url, params=params, timeout=60)
 
         if response.status_code == 200:
             logger.info("WhatsApp Bot [CallMeBot]: Message envoyé avec succès")
