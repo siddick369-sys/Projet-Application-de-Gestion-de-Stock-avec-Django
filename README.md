@@ -46,11 +46,11 @@ L’objectif principal est de démontrer la maîtrise des outils de gestion de d
 
 ---
 
-## 🚀 Lancer l'application localement
+## 🚀 Lancement local (Dernière mise à jour : 24 Mars 2026)
 
 1. **Cloner le projet** :
    ```bash
-   git clone https://github.com/Baga-code/Projet-Application-de-Gestion-de-Stock-avec-Django
+   git clone https://github.com/siddick369-sys/Projet-Application-de-Gestion-de-Stock-avec-Django.git
    cd Projet-Application-de-Gestion-de-Stock-avec-Django
 
 2.**Créer un environnement virtuel** :
