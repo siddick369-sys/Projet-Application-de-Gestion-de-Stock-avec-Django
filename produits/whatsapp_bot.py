@@ -1,12 +1,13 @@
 """
 Bot WhatsApp pour les notifications automatiques de gestion de stock.
 
-Supporte deux fournisseurs d'API :
+Supporte trois fournisseurs d'API :
 1. Green API (green-api.com) - Recommandé, gratuit jusqu'à 50 messages/jour
 2. CallMeBot (callmebot.com) - Alternative gratuite
+3. pywhatkit - Envoi via WhatsApp Web (nécessite un navigateur, mode dev)
 
 Configuration dans settings.py :
-    WHATSAPP_PROVIDER = 'green_api'  # ou 'callmebot'
+    WHATSAPP_PROVIDER = 'green_api'  # ou 'callmebot' ou 'pywhatkit'
     GREEN_API_ID_INSTANCE = 'votre_id'
     GREEN_API_TOKEN = 'votre_token'
     CALLMEBOT_API_KEY = 'votre_cle'
@@ -29,10 +30,44 @@ class WhatsAppBot:
         self.max_retries = 3
         self.retry_delay = 2  # secondes
 
+    def _check_configuration(self):
+        """Vérifie si le bot est correctement configuré et retourne un message d'erreur si non."""
+        if self.provider == 'green_api':
+            id_instance = getattr(settings, 'GREEN_API_ID_INSTANCE', '')
+            api_token = getattr(settings, 'GREEN_API_TOKEN', '')
+            if not id_instance or not api_token:
+                return (
+                    "GREEN API non configuré!\n"
+                    "Définissez GREEN_API_ID_INSTANCE et GREEN_API_TOKEN dans settings.py\n"
+                    "ou via variables d'environnement.\n"
+                    "Inscription gratuite sur https://green-api.com"
+                )
+        elif self.provider == 'callmebot':
+            api_key = getattr(settings, 'CALLMEBOT_API_KEY', '')
+            if not api_key:
+                return (
+                    "CALLMEBOT non configuré!\n"
+                    "Définissez CALLMEBOT_API_KEY dans settings.py\n"
+                    "ou via variable d'environnement."
+                )
+        elif self.provider == 'pywhatkit':
+            try:
+                import pywhatkit  # noqa: F401
+            except ImportError:
+                return "pywhatkit non installé! Lancez: pip install pywhatkit"
+        else:
+            return f"Fournisseur WhatsApp inconnu: '{self.provider}'"
+        return None
+
+    def is_configured(self):
+        """Retourne True si le bot est correctement configuré pour envoyer des messages."""
+        return self._check_configuration() is None
+
     def send_message(self, to_number, message):
         """
         Envoie un message WhatsApp via le fournisseur configuré.
         Retourne True si le message a été envoyé avec succès.
+        Retourne False si l'envoi a échoué ou si le bot n'est pas configuré.
         """
         if not to_number:
             logger.error("WhatsApp Bot: Aucun numéro de destinataire fourni.")
@@ -40,12 +75,21 @@ class WhatsAppBot:
 
         clean_number = self._clean_number(to_number)
 
+        # Vérifier la configuration
+        config_error = self._check_configuration()
+        if config_error:
+            logger.error(f"WhatsApp Bot: {config_error}")
+            self._log_message(clean_number, message, sent=False)
+            return False
+
         for attempt in range(1, self.max_retries + 1):
             try:
                 if self.provider == 'green_api':
                     success = self._send_via_green_api(clean_number, message)
                 elif self.provider == 'callmebot':
                     success = self._send_via_callmebot(clean_number, message)
+                elif self.provider == 'pywhatkit':
+                    success = self._send_via_pywhatkit(clean_number, message)
                 else:
                     logger.error(f"WhatsApp Bot: Fournisseur inconnu '{self.provider}'")
                     return False
@@ -57,11 +101,14 @@ class WhatsAppBot:
                 logger.warning(f"WhatsApp Bot: Échec tentative {attempt}/{self.max_retries}")
             except requests.exceptions.RequestException as e:
                 logger.error(f"WhatsApp Bot: Erreur réseau tentative {attempt}: {e}")
+            except Exception as e:
+                logger.error(f"WhatsApp Bot: Erreur inattendue tentative {attempt}: {e}")
 
             if attempt < self.max_retries:
                 time.sleep(self.retry_delay * attempt)
 
         logger.error(f"WhatsApp Bot: Échec définitif après {self.max_retries} tentatives pour {clean_number}")
+        self._log_message(clean_number, message, sent=False)
         return False
 
     def send_stock_alert(self, produits_bas):
@@ -148,11 +195,6 @@ class WhatsAppBot:
         id_instance = getattr(settings, 'GREEN_API_ID_INSTANCE', '')
         api_token = getattr(settings, 'GREEN_API_TOKEN', '')
 
-        if not id_instance or not api_token:
-            logger.warning("WhatsApp Bot: Green API non configuré. Message logué uniquement.")
-            self._log_message(number, message)
-            return True
-
         url = f"https://api.green-api.com/waInstance{id_instance}/sendMessage/{api_token}"
 
         # Green API attend le format: 237678317658@c.us
@@ -178,11 +220,6 @@ class WhatsAppBot:
         """Envoie via CallMeBot API (callmebot.com)."""
         api_key = getattr(settings, 'CALLMEBOT_API_KEY', '')
 
-        if not api_key:
-            logger.warning("WhatsApp Bot: CallMeBot non configuré. Message logué uniquement.")
-            self._log_message(number, message)
-            return True
-
         url = "https://api.callmebot.com/whatsapp.php"
         params = {
             "phone": number,
@@ -199,14 +236,35 @@ class WhatsAppBot:
         logger.error(f"WhatsApp Bot [CallMeBot]: Erreur {response.status_code} - {response.text}")
         return False
 
+    def _send_via_pywhatkit(self, number, message):
+        """Envoie via pywhatkit (WhatsApp Web - nécessite navigateur connecté)."""
+        try:
+            import pywhatkit as kit
+        except ImportError:
+            logger.error("WhatsApp Bot: pywhatkit non installé. pip install pywhatkit")
+            return False
+
+        try:
+            # Format: +237678317658
+            phone = f"+{number}" if not number.startswith('+') else number
+            # Envoi instantané via WhatsApp Web
+            kit.sendwhatmsg_instantly(phone, message, wait_time=15, tab_close=True)
+            logger.info(f"WhatsApp Bot [pywhatkit]: Message envoyé à {phone}")
+            return True
+        except Exception as e:
+            logger.error(f"WhatsApp Bot [pywhatkit]: Erreur - {e}")
+            return False
+
     def _clean_number(self, number):
         """Nettoie le numéro de téléphone (garde uniquement les chiffres)."""
         return "".join(filter(str.isdigit, str(number)))
 
-    def _log_message(self, number, message):
-        """Log le message quand aucune API n'est configurée (mode développement)."""
+    def _log_message(self, number, message, sent=True):
+        """Log le message pour le suivi."""
+        status = "ENVOYÉ" if sent else "NON ENVOYÉ (API non configurée)"
         logger.info("=" * 50)
-        logger.info("WHATSAPP BOT - MESSAGE (MODE DEV)")
+        logger.info(f"WHATSAPP BOT - MESSAGE {status}")
+        logger.info(f"Fournisseur: {self.provider}")
         logger.info(f"Destinataire: {number}")
         logger.info(f"Message:\n{message}")
         logger.info("=" * 50)
